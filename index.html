@@ -563,6 +563,8 @@ button,input{font:inherit;color:inherit}
         var items = s.items.map(function(r){ return mkItem(f, {title:r.t, link:r.l, date:r.d, desc:r.s, img:r.i}); });
         state.status[f.id] = {s:"ok", n:items.length, via:"server"};
         collected = collected.concat(items);
+      } else if (s && /^Feed is valid/.test(s.error || "")){
+        state.status[f.id] = {s:"ok", n:0, via:"server"};  // working feed, nothing published right now
       } else {
         state.status[f.id] = {s:"err", n:0, err: s ? (s.error || "Feed returned no items") : "Not fetched by the server yet"};
       }
