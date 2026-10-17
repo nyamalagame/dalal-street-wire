@@ -23,6 +23,9 @@ import html
 import json
 import re
 import sys
+import time
+import urllib.error
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -37,7 +40,9 @@ OUTPUT = ROOT / "data" / "feeds.json"
 MAX_ITEMS = 60          # newest items kept per feed
 SUMMARY_CHARS = 400     # summaries are trimmed to keep the file small for phones
 TIMEOUT = 25            # seconds per request
-WORKERS = 8
+WORKERS = 8             # sites fetched in parallel
+SAME_SITE_GAP = 1.5     # seconds between two requests to the same site
+RETRY_PAUSE = 5         # seconds before retrying a reset or timed-out request
 HEADERS = {
     "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                    "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"),
@@ -96,12 +101,36 @@ def date_for(entry):
     return ""
 
 
+def download(url):
+    """GET the URL, retrying once after a pause on connection resets and timeouts."""
+    for attempt in (1, 2):
+        try:
+            request = urllib.request.Request(url, headers=HEADERS)
+            with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+                return response.read(), response.headers.get("Content-Type", "")
+        except urllib.error.HTTPError:
+            raise  # a 403 or 404 won't change on retry
+        except (urllib.error.URLError, TimeoutError, ConnectionError):
+            if attempt == 2:
+                raise
+            time.sleep(RETRY_PAUSE)
+
+
+def describe_empty(body, content_type, parsed):
+    """Explain why a response had no items, e.g. an empty feed or an HTML block page."""
+    start = body[:300].decode("utf-8", "replace").strip().lower()
+    if "html" in content_type.lower() or start.startswith("<!doctype html") or start.startswith("<html"):
+        return f"Site returned a web page, not a feed (likely blocked) [{content_type or 'no content type'}]"
+    if parsed.get("feed", {}).get("title") is not None or "<channel" in start or "<rss" in start:
+        return "Feed is valid but currently has no items"
+    reason = str(getattr(parsed, "bozo_exception", "")) or "Feed returned no items"
+    return f"{reason} [{content_type or 'no content type'}, {len(body)} bytes]"
+
+
 def fetch(feed):
     feed_id, url = feed
     try:
-        request = urllib.request.Request(url, headers=HEADERS)
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-            body = response.read()
+        body, content_type = download(url)
         parsed = feedparser.parse(body)
         items = []
         for entry in parsed.entries[:MAX_ITEMS]:
@@ -117,17 +146,36 @@ def fetch(feed):
                 "i": image_for(entry),
             })
         if not items:
-            reason = str(getattr(parsed, "bozo_exception", "")) or "Feed returned no items"
-            return feed_id, {"ok": False, "error": reason[:200], "items": []}
+            return feed_id, {"ok": False, "error": describe_empty(body, content_type, parsed)[:200], "items": []}
         return feed_id, {"ok": True, "error": "", "items": items}
     except Exception as exc:  # network errors, HTTP errors, bad payloads
         return feed_id, {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:200], "items": []}
 
 
+def fetch_site(site_feeds):
+    """Fetch one site's feeds one after another, with a short gap between them.
+
+    Several sites (Economic Times, for one) reset connections when many
+    requests arrive from the same machine at once.
+    """
+    results = []
+    for index, feed in enumerate(site_feeds):
+        if index:
+            time.sleep(SAME_SITE_GAP)
+        results.append(fetch(feed))
+    return results
+
+
 def main():
     feeds = read_feed_list()
+    by_site = {}
+    for feed in feeds:
+        by_site.setdefault(urllib.parse.urlsplit(feed[1]).hostname, []).append(feed)
+    results = {}
     with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-        results = dict(pool.map(fetch, feeds))
+        for site_results in pool.map(fetch_site, by_site.values()):
+            results.update(site_results)
+    results = {feed_id: results[feed_id] for feed_id, _ in feeds}  # keep page order
 
     snapshot = {
         "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
