@@ -19,14 +19,13 @@ Open `index.html` in any modern browser. There is nothing to install or build.
 
 ## How it fetches the news
 
-Browsers block a page from reading other websites directly (CORS), so the dashboard fetches each RSS feed through a free CORS proxy. It tries these in order and remembers the one that works:
+A scheduled GitHub Actions job (`.github/workflows/fetch-feeds.yml`) runs `scripts/fetch_feeds.py` every 15 minutes. The script reads the feed list from `index.html`, fetches every feed on GitHub's servers and commits a compact snapshot to `data/feeds.json`. The dashboard loads that one file from its own address, so it works in any browser, including Brave with Shields on, and loads quickly on phones.
 
-1. allorigins.win
-2. corsproxy.io
-3. codetabs.com
-4. rss2json.com
+To fetch fresh feeds immediately, open the repository's **Actions** tab, choose **Fetch feeds** and click **Run workflow**. To add or remove a feed, edit the `FEEDS` list in `index.html`; the job picks up the change on its next run.
 
-Free proxies can rate-limit or go down. To reduce that, feeds load six at a time. If a feed shows red in the health panel, hover over it to see the error.
+When `index.html` is opened directly from your device (not through GitHub Pages), there is no snapshot to read, so the page falls back to fetching each feed through a free CORS proxy: allorigins.win, corsproxy.io, codetabs.com or rss2json.com, in that order. Some browsers, Brave included, block these proxies.
+
+If a feed shows red in the health panel, hover over it to see the error.
 
 ## Limitations
 

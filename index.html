@@ -206,7 +206,7 @@ button,input{font:inherit;color:inherit}
     <section class="stream" id="stream" aria-live="polite"></section>
   </div>
 
-  <p class="foot">Headlines come from each publisher's public RSS feed, fetched through a free CORS proxy. Times are shown in IST. Click a headline to read the full story on the publisher's site.</p>
+  <p class="foot">Headlines come from each publisher's public RSS feed, collected every 15 minutes by a scheduled GitHub job (or through a free CORS proxy when this file is opened from your device). Times are shown in IST. Click a headline to read the full story on the publisher's site.</p>
 </main>
 
 <script>
@@ -546,6 +546,31 @@ button,input{font:inherit;color:inherit}
     return attempt();
   }
 
+  /* ---------- Server snapshot (GitHub Actions writes data/feeds.json every 15 min) ---------- */
+  var SNAPSHOT_URL = "data/feeds.json";
+  function loadSnapshot(){
+    if (location.protocol === "file:") return Promise.resolve(null);
+    return fetchT(SNAPSHOT_URL + "?t=" + Date.now()).then(function(text){
+      var j = JSON.parse(text);
+      return (j && j.feeds) ? j : null;
+    }).catch(function(){ return null; });
+  }
+  function applySnapshot(snap){
+    var collected = [];
+    FEEDS.forEach(function(f){
+      var s = snap.feeds[f.id];
+      if (s && s.ok && s.items && s.items.length){
+        var items = s.items.map(function(r){ return mkItem(f, {title:r.t, link:r.l, date:r.d, desc:r.s, img:r.i}); });
+        state.status[f.id] = {s:"ok", n:items.length, via:"server"};
+        collected = collected.concat(items);
+      } else {
+        state.status[f.id] = {s:"err", n:0, err: s ? (s.error || "Feed returned no items") : "Not fetched by the server yet"};
+      }
+    });
+    state.snapshotAt = parseDate(snap.generated);
+    return collected;
+  }
+
   function loadAll(){
     if (state.loading) return;
     state.loading = true;
@@ -555,6 +580,26 @@ button,input{font:inherit;color:inherit}
     renderHealth();
     if (!state.items.length) renderSkeleton();
 
+    loadSnapshot().then(function(snap){
+      if (snap){ finishLoad(applySnapshot(snap), {}); }
+      else { state.snapshotAt = null; loadViaProxies(); }
+    });
+  }
+
+  function finishLoad(collected, viaCount){
+    var btn = $("refresh");
+    // Keep previous items if every feed failed (e.g. offline)
+    if (collected.length) state.items = dedupe(collected);
+    var best = Object.keys(viaCount).sort(function(a,b){ return viaCount[b]-viaCount[a]; })[0];
+    if (best){ state.goodProxy = best; store("proxy", best); }
+    state.lastLoad = new Date();
+    state.loading = false;
+    btn.disabled = false; btn.textContent = "Refresh";
+    scheduleNext();
+    render();
+  }
+
+  function loadViaProxies(){
     var collected = [], viaCount = {};
     // Run at most CONCURRENCY feeds at once so free proxies don't rate-limit us
     var queue = FEEDS.slice(), running = [];
@@ -577,17 +622,7 @@ button,input{font:inherit;color:inherit}
       });
     }
 
-    Promise.all(jobs).then(function(){
-      // Keep previous items if every feed failed (e.g. offline)
-      if (collected.length) state.items = dedupe(collected);
-      var best = Object.keys(viaCount).sort(function(a,b){ return viaCount[b]-viaCount[a]; })[0];
-      if (best){ state.goodProxy = best; store("proxy", best); }
-      state.lastLoad = new Date();
-      state.loading = false;
-      btn.disabled = false; btn.textContent = "Refresh";
-      scheduleNext();
-      render();
-    });
+    Promise.all(jobs).then(function(){ finishLoad(collected, viaCount); });
   }
 
   function dedupe(list){
@@ -660,7 +695,9 @@ button,input{font:inherit;color:inherit}
       ]));
     });
     $("sFeeds").textContent = live+"/"+FEEDS.length;
-    $("via").textContent = state.goodProxy ? "Fetching through the "+state.goodProxy+" proxy. Hover a failed feed to see why." : "";
+    $("via").textContent = state.snapshotAt
+      ? "Fetched by the server at "+istTime.format(state.snapshotAt)+" IST ("+ago(state.snapshotAt)+"). The server refreshes every 15 minutes. Hover a failed feed to see why."
+      : state.goodProxy ? "Fetching through the "+state.goodProxy+" proxy. Hover a failed feed to see why." : "";
   }
 
   function renderSummary(){

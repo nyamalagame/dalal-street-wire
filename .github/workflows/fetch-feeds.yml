@@ -1,0 +1,49 @@
+name: Fetch feeds
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes (GitHub may delay scheduled runs at busy times)
+  workflow_dispatch:          # lets you run it by hand from the Actions tab
+  push:
+    branches: [main]
+    paths:
+      - index.html
+      - scripts/fetch_feeds.py
+      - .github/workflows/fetch-feeds.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-feeds
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install feedparser
+        run: pip install feedparser==6.0.11
+
+      - name: Fetch all feeds
+        run: python scripts/fetch_feeds.py
+
+      - name: Commit the new snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/feeds.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Update feed snapshot"
+          git pull --rebase origin main
+          git push
