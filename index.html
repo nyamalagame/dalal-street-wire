@@ -15,6 +15,7 @@
   --ok:#1E7F4F; --warn:#A86A00; --bad:#B3261E; --ok-soft:#E3F2EA; --bad-soft:#F9E3E1;
   --o-et:#C2410C; --o-mint:#0F766E; --o-bs:#1D4ED8; --o-mc:#7C3AED; --o-bl:#B45309; --o-fe:#BE185D;
   --o-cnbc:#0369A1; --o-bt:#4D7C0F; --o-zee:#9F1239;
+  --o-print:#B91C1C; --o-me:#475569; --o-te:#0E7490;
   --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
   --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
@@ -27,6 +28,7 @@
     --ok:#4ADE95; --warn:#F2B84B; --bad:#F2857C; --ok-soft:#16291F; --bad-soft:#331A1A;
     --o-et:#FB8A55; --o-mint:#3CC7B8; --o-bs:#7AA2FF; --o-mc:#B49BFF; --o-bl:#F0B05A; --o-fe:#F57FB4;
     --o-cnbc:#5CC2F2; --o-bt:#A3D65C; --o-zee:#F7839B;
+    --o-print:#F87171; --o-me:#A5B1C4; --o-te:#4FD1E0;
     color-scheme:dark;
   }
 }
@@ -217,7 +219,10 @@ button,input{font:inherit;color:inherit}
     fe:   {name:"Financial Express", color:"--o-fe"},
     cnbc: {name:"CNBC-TV18",         color:"--o-cnbc"},
     bt:   {name:"Business Today",    color:"--o-bt"},
-    zee:  {name:"Zee Business",      color:"--o-zee"}
+    zee:  {name:"Zee Business",      color:"--o-zee"},
+    print:{name:"ThePrint",          color:"--o-print"},
+    me:   {name:"Mostly Economics",  color:"--o-me"},
+    te:   {name:"Trading Economics", color:"--o-te"}
   };
 
   var FEEDS = [
@@ -252,7 +257,10 @@ button,input{font:inherit;color:inherit}
     {id:"cnbc-mkt",   outlet:"cnbc", section:"Market",      url:"https://www.cnbctv18.com/commonfeeds/v1/cne/rss/market.xml"},
     {id:"cnbc-econ",  outlet:"cnbc", section:"Economy",     url:"https://www.cnbctv18.com/commonfeeds/v1/cne/rss/economy.xml"},
     {id:"bt-home",    outlet:"bt",   section:"Latest",      url:"https://www.businesstoday.in/rssfeeds/?id=home"},
-    {id:"zee-econ",   outlet:"zee",  section:"Economy",     url:"https://www.zeebiz.com/india-economy.xml"}
+    {id:"zee-econ",   outlet:"zee",  section:"Economy",     url:"https://www.zeebiz.com/india-economy.xml"},
+    {id:"print-econ", outlet:"print",section:"Economy",     url:"https://theprint.in/category/economy/feed/"},
+    {id:"me-blog",    outlet:"me",   section:"Blog",        url:"https://mostlyeconomics.wordpress.com/feed/"},
+    {id:"te-india",   outlet:"te",   section:"India",       url:"https://tradingeconomics.com/india/rss"}
   ];
   var CONCURRENCY = 6;
 
