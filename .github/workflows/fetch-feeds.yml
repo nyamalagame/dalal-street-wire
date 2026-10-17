@@ -1,27 +1,33 @@
-name: Fetch feeds
+name: Fetch feeds and publish
+
+# Fetches every feed on GitHub's servers and publishes the dashboard plus a
+# fresh data/feeds.json straight to GitHub Pages. Nothing is committed to the
+# repository, so its history only holds the code.
+# Requires Settings > Pages > Source set to "GitHub Actions".
 
 on:
   schedule:
     - cron: "*/15 * * * *"   # every 15 minutes (GitHub may delay scheduled runs at busy times)
-  workflow_dispatch:          # lets you run it by hand from the Actions tab
+  workflow_dispatch:          # run it by hand from the Actions tab
   push:
-    branches: [main]
-    paths:
-      - index.html
-      - scripts/fetch_feeds.py
-      - .github/workflows/fetch-feeds.yml
+    branches: [main]          # republish whenever the dashboard or script changes
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: fetch-feeds
+  group: pages
   cancel-in-progress: false
 
 jobs:
-  fetch:
+  publish:
     runs-on: ubuntu-latest
     timeout-minutes: 14
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,18 +38,18 @@ jobs:
       - name: Install feedparser
         run: pip install feedparser==6.0.11
 
-      - name: Fetch all feeds
-        run: python scripts/fetch_feeds.py
-
-      - name: Commit the new snapshot
+      - name: Build the site
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/feeds.json
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-            exit 0
-          fi
-          git commit -m "Update feed snapshot"
-          git pull --rebase origin main
-          git push
+          mkdir -p _site/data
+          cp index.html _site/
+          python scripts/fetch_feeds.py _site/data/feeds.json
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Publish to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -19,9 +19,15 @@ Open `index.html` in any modern browser. There is nothing to install or build.
 
 ## How it fetches the news
 
-A scheduled GitHub Actions job (`.github/workflows/fetch-feeds.yml`) runs `scripts/fetch_feeds.py` every 15 minutes. The script reads the feed list from `index.html`, fetches every feed on GitHub's servers and commits a compact snapshot to `data/feeds.json`. The dashboard loads that one file from its own address, so it works in any browser, including Brave with Shields on, and loads quickly on phones.
+A scheduled GitHub Actions job (`.github/workflows/fetch-feeds.yml`) runs `scripts/fetch_feeds.py` every 15 minutes. The script reads the feed list from `index.html`, fetches every feed on GitHub's servers and writes a compact snapshot, `data/feeds.json`. The job then publishes the dashboard and that snapshot straight to GitHub Pages. Nothing is committed, so the repository holds only the code.
 
-To fetch fresh feeds immediately, open the repository's **Actions** tab, choose **Fetch feeds** and click **Run workflow**. To add or remove a feed, edit the `FEEDS` list in `index.html`; the job picks up the change on its next run.
+The dashboard loads the snapshot from its own address, so it works in any browser, including Brave with Shields on, and loads quickly on phones. The snapshot keeps each story's headline, link, date, image link and a one-sentence teaser; the full story is always on the publisher's site.
+
+**Setup:** in the repository's **Settings → Pages**, set **Source** to **GitHub Actions**.
+
+To fetch fresh feeds immediately, open the **Actions** tab, choose **Fetch feeds and publish** and click **Run workflow**. To add or remove a feed, edit the `FEEDS` list in `index.html`; pushing the change republishes the site.
+
+GitHub pauses scheduled jobs in public repositories after 60 days without activity and emails a warning first. If that happens, re-enable the job from the **Actions** tab.
 
 When `index.html` is opened directly from your device (not through GitHub Pages), there is no snapshot to read, so the page falls back to fetching each feed through a free CORS proxy: allorigins.win, corsproxy.io, codetabs.com or rss2json.com, in that order. Some browsers, Brave included, block these proxies.
 

@@ -35,10 +35,11 @@ import feedparser
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "index.html"
-OUTPUT = ROOT / "data" / "feeds.json"
+# Output path can be given as the first argument (the workflow writes into _site/)
+OUTPUT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / "data" / "feeds.json"
 
 MAX_ITEMS = 60          # newest items kept per feed
-SUMMARY_CHARS = 400     # summaries are trimmed to keep the file small for phones
+SUMMARY_CHARS = 160     # keep only a short teaser: the first sentence, at most this long
 TIMEOUT = 25            # seconds per request
 WORKERS = 8             # sites fetched in parallel
 SAME_SITE_GAP = 1.5     # seconds between two requests to the same site
@@ -64,6 +65,9 @@ def read_feed_list():
     return feeds
 
 
+SENTENCE_END_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'‘“₹(])")
+
+
 def clean(value, limit=None):
     if not value:
         return ""
@@ -71,6 +75,16 @@ def clean(value, limit=None):
     if limit and len(value) > limit:
         value = value[: limit - 1].rsplit(" ", 1)[0] + "…"
     return value
+
+
+def teaser(value):
+    """First sentence of a summary, capped at SUMMARY_CHARS, so the snapshot holds
+    a short pointer to each story rather than a copy of the publisher's text."""
+    text = clean(value)
+    if not text:
+        return ""
+    text = SENTENCE_END_RE.split(text, maxsplit=1)[0]
+    return clean(text, SUMMARY_CHARS)
 
 
 def image_for(entry):
@@ -142,7 +156,7 @@ def fetch(feed):
                 "t": title,
                 "l": link,
                 "d": date_for(entry),
-                "s": clean(entry.get("summary") or entry.get("description"), SUMMARY_CHARS),
+                "s": teaser(entry.get("summary") or entry.get("description")),
                 "i": image_for(entry),
             })
         if not items:
@@ -185,7 +199,7 @@ def main():
     OUTPUT.write_text(json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
     ok = sum(1 for r in results.values() if r["ok"])
-    print(f"{ok}/{len(feeds)} feeds fetched; wrote {OUTPUT.relative_to(ROOT)} "
+    print(f"{ok}/{len(feeds)} feeds fetched; wrote {OUTPUT} "
           f"({OUTPUT.stat().st_size // 1024} KB)")
     for feed_id, result in sorted(results.items()):
         if not result["ok"]:
