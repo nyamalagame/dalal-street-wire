@@ -17,6 +17,7 @@
   --o-cnbc:#0369A1; --o-bt:#4D7C0F; --o-zee:#9F1239;
   --o-print:#B91C1C; --o-me:#475569; --o-te:#0E7490;
   --o-hindu:#1E3A8A; --o-etb:#A16207; --o-nse:#15803D;
+  --o-bse:#1E40AF; --o-tb:#C026D3; --o-ep:#0F766E; --o-ai:#57534E;
   --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
   --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
@@ -31,6 +32,7 @@
     --o-cnbc:#5CC2F2; --o-bt:#A3D65C; --o-zee:#F7839B;
     --o-print:#F87171; --o-me:#A5B1C4; --o-te:#4FD1E0;
     --o-hindu:#93B4FF; --o-etb:#E8C15A; --o-nse:#5FD98A;
+    --o-bse:#8FA8FF; --o-tb:#EE8CF5; --o-ep:#5EE0CE; --o-ai:#C9C2BC;
     color-scheme:dark;
   }
 }
@@ -227,7 +229,11 @@ button,input{font:inherit;color:inherit}
     te:   {name:"Trading Economics", color:"--o-te"},
     hindu:{name:"The Hindu",         color:"--o-hindu"},
     etb:  {name:"ETBFSI",            color:"--o-etb"},
-    nse:  {name:"NSE",               color:"--o-nse"}
+    nse:  {name:"NSE",               color:"--o-nse"},
+    bse:  {name:"BSE",               color:"--o-bse"},
+    tb:   {name:"Trade Brains",      color:"--o-tb"},
+    ep:   {name:"EquityPandit",      color:"--o-ep"},
+    ai:   {name:"Alpha Ideas",       color:"--o-ai"}
   };
 
   var FEEDS = [
@@ -278,7 +284,19 @@ button,input{font:inherit;color:inherit}
     {id:"nse-ca",     outlet:"nse",  section:"Corporate action", kind:"filing", url:"https://nsearchives.nseindia.com/content/RSS/Corporate_action.xml"},
     {id:"nse-insider",outlet:"nse",  section:"Insider trading",  kind:"filing", url:"https://nsearchives.nseindia.com/content/RSS/InsiderTrading.xml"},
     {id:"nse-offer",  outlet:"nse",  section:"Offer document",   kind:"filing", url:"https://nsearchives.nseindia.com/content/RSS/Offer_Documents.xml"},
-    {id:"nse-circ",   outlet:"nse",  section:"Circular",         kind:"filing", url:"https://nsearchives.nseindia.com/content/RSS/Circulars.xml"}
+    {id:"nse-circ",   outlet:"nse",  section:"Circular",         kind:"filing", url:"https://nsearchives.nseindia.com/content/RSS/Circulars.xml"},
+    /* BSE exchange filings: also shown only in the filings tab */
+    {id:"bse-ann",    outlet:"bse",  section:"Announcement",     kind:"filing", url:"https://www.bseindia.com/data/xml/announcements.aspx"},
+    {id:"bse-results",outlet:"bse",  section:"Financial results", kind:"filing", url:"https://www.bseindia.com/Data/XML/FinancialResultsFeed.aspx"},
+    {id:"bse-board",  outlet:"bse",  section:"Board meeting",    kind:"filing", url:"https://beta.bseindia.com/Data/XML/BoardMeetingsFeed.xml"},
+    {id:"bse-ca",     outlet:"bse",  section:"Corporate action", kind:"filing", url:"https://www.bseindia.com/data/XML/CorpActionFeed.aspx"},
+    {id:"bse-insider",outlet:"bse",  section:"Insider trading",  kind:"filing", url:"https://www.bseindia.com/Data/XML/InsiderTradingFeed.aspx"},
+    {id:"bse-notices",outlet:"bse",  section:"Notice",           kind:"filing", url:"https://www.bseindia.com/data/xml/notices.xml"},
+    /* BSE market commentary is news, so it stays in the main stream */
+    {id:"bse-sensex", outlet:"bse",  section:"Sensex view",      url:"https://www.bseindia.com/data/xml/sensexrss.xml"},
+    {id:"tb-news",    outlet:"tb",   section:"Stocks",      url:"https://tradebrains.in/feed/"},
+    {id:"ep-news",    outlet:"ep",   section:"Latest news", url:"https://www.equitypandit.com/category/latest-news/feed/"},
+    {id:"ai-blog",    outlet:"ai",   section:"Analysis",    url:"https://alphaideas.in/feed/"}
   ];
   var CONCURRENCY = 6;
 
@@ -292,7 +310,7 @@ button,input{font:inherit;color:inherit}
   var CATS = [
     {id:"all",   label:"All"},
     {id:"picks", label:"Stock picks", test:isPick},
-    {id:"filings", label:"NSE filings", filingsOnly:true},
+    {id:"filings", label:"Exchange filings", filingsOnly:true},
     {id:"mkt",   label:"Markets",       re:/\b(sensex|nifty|stocks?|shares?|markets?|sebi|fii|fpi|dii|f&o|derivatives?|midcap|smallcap|rally|sell-?off)\b/i},
     {id:"earn",  label:"Earnings",      re:/\b(q[1-4](fy\d+)?|results?|profit|pat|net income|revenue|earnings|ebitda|margin|dividend)\b/i},
     {id:"ipo",   label:"IPOs",          re:/\b(ipo|listing|gmp|subscribed|subscription|anchor investors|drhp)\b/i},
@@ -413,6 +431,15 @@ button,input{font:inherit;color:inherit}
         var dn = new Date(iso);
         if (!isNaN(dn)) return dn;
       }
+    }
+    // BSE-style "17/10/2026 14:30:05" or "17-10-2026 2:30:05 PM" (day first), in IST
+    var dmy = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AP]M)?)?$/i.exec(s);
+    if (dmy){
+      var hh = parseInt(dmy[4]||"0",10);
+      if (dmy[7]){ var pm = /pm/i.test(dmy[7]); if (pm && hh < 12) hh += 12; if (!pm && hh === 12) hh = 0; }
+      var iso2 = dmy[3]+"-"+dmy[2].padStart(2,"0")+"-"+dmy[1].padStart(2,"0")+"T"+String(hh).padStart(2,"0")+":"+(dmy[5]||"00")+":"+(dmy[6]||"00")+"+05:30";
+      var dd2 = new Date(iso2);
+      if (!isNaN(dd2)) return dd2;
     }
     var d = new Date(s);
     if (isNaN(d) && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) d = new Date(s.replace(" ","T")+"Z"); // rss2json UTC
@@ -677,8 +704,8 @@ button,input{font:inherit;color:inherit}
     }
     if (state.cat === "filings"){
       s.appendChild(el("div",{"class":"disclaimer"},[
-        el("strong",{text:"Official NSE filings. "}),
-        "Each entry is a company disclosure published by the exchange: announcements, results, board meetings, corporate actions, insider trades, offer documents and circulars. Links open the filing itself."
+        el("strong",{text:"Official NSE and BSE filings. "}),
+        "Each entry is a company disclosure or exchange notice published by NSE or BSE: announcements, results, board meetings, corporate actions, insider trades, offer documents, circulars and notices. Links open the filing itself. Use the NSE and BSE switches under Outlets to show one exchange."
       ]));
     }
     if (!list.length){
