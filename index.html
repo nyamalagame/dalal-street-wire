@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dalal Street Wire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky masthead, left rail (outlets + feed health), main news stream grouped by IST day */
+:root{
+  --bg:#F2F3F7; --surface:#FFFFFF; --ink:#15192B; --muted:#5B6178; --line:#DDE0E8; --hover:#F7F8FB;
+  --accent:#B0680A; --accent-soft:#F6EBDB;
+  --ok:#1E7F4F; --warn:#A86A00; --bad:#B3261E; --ok-soft:#E3F2EA; --bad-soft:#F9E3E1;
+  --o-et:#C2410C; --o-mint:#0F766E; --o-bs:#1D4ED8; --o-mc:#7C3AED; --o-bl:#B45309; --o-fe:#BE185D;
+  --o-cnbc:#0369A1; --o-bt:#4D7C0F; --o-zee:#9F1239;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0E1120; --surface:#161A2B; --ink:#E7E9F2; --muted:#979CB3; --line:#272C42; --hover:#1C2134;
+    --accent:#E9A23B; --accent-soft:#2E2617;
+    --ok:#4ADE95; --warn:#F2B84B; --bad:#F2857C; --ok-soft:#16291F; --bad-soft:#331A1A;
+    --o-et:#FB8A55; --o-mint:#3CC7B8; --o-bs:#7AA2FF; --o-mc:#B49BFF; --o-bl:#F0B05A; --o-fe:#F57FB4;
+    --o-cnbc:#5CC2F2; --o-bt:#A3D65C; --o-zee:#F7839B;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* Masthead */
+.mast{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.mast .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding-block:12px}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.brand h1{font:800 22px/1 var(--f-display);letter-spacing:-.01em;margin:0}
+.brand h1 span{color:var(--accent)}
+.brand small{font:500 11px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.clock{font:500 13px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;align-items:center;gap:6px;font:600 12px var(--f-body);padding:4px 10px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.open{color:var(--ok);background:var(--ok-soft);border-color:transparent}
+.pill.closed{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;font-weight:500;font-size:13px;cursor:pointer}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn[disabled]{opacity:.6;cursor:progress}
+.spin{width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+
+/* Summary strip */
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-block:18px 14px}
+.stat{background:var(--surface);padding:12px 14px;min-width:0}
+.stat b{display:block;font:700 24px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.stat span{font:500 11px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+@media (max-width:640px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Controls */
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.search{flex:1 1 260px;min-width:0;position:relative}
+.search input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.tabs{display:flex;gap:4px;overflow-x:auto;max-width:100%;padding-bottom:2px}
+.tab{border:1px solid transparent;background:none;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tab:hover{color:var(--ink);background:var(--hover)}
+.tab[aria-pressed="true"]{color:var(--ink);background:var(--surface);border-color:var(--line)}
+.tab em{font-style:normal;font:500 11px var(--f-mono);margin-left:4px;color:var(--muted)}
+
+/* Body grid */
+.grid{display:grid;grid-template-columns:260px minmax(0,1fr);gap:20px;align-items:start;padding-bottom:40px}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.rail{position:sticky;top:76px;display:flex;flex-direction:column;gap:16px}
+@media (max-width:860px){.rail{position:static}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+.panel h2{font:600 11px var(--f-mono);text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 10px}
+.outlets{display:flex;flex-direction:column;gap:4px}
+@media (max-width:860px){.outlets{flex-direction:row;flex-wrap:wrap}}
+.outlet{display:flex;align-items:center;gap:8px;border:1px solid transparent;background:none;border-radius:7px;padding:6px 8px;cursor:pointer;text-align:left;font-size:14px}
+.outlet:hover{background:var(--hover)}
+.outlet .sw{width:10px;height:10px;border-radius:3px;background:var(--c);flex:none}
+.outlet .n{margin-left:auto;font:500 12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.outlet[aria-pressed="false"]{opacity:.45}
+.outlet[aria-pressed="false"] .sw{background:none;box-shadow:inset 0 0 0 1.5px var(--c)}
+.health{list-style:none;margin:0;padding:0 4px 0 0;display:flex;flex-direction:column;gap:7px;font-size:13px;max-height:340px;overflow-y:auto}
+.health li{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:8px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--ok)} .dot.err{background:var(--bad)} .dot.load{background:var(--warn)}
+.health .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.health .meta{font:400 11px var(--f-mono);color:var(--muted)}
+.note{font-size:12px;color:var(--muted);margin:10px 0 0}
+.toggle{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+
+/* Stream */
+.stream{min-width:0}
+.day{font:700 13px var(--f-display);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:14px 2px 8px;display:flex;gap:10px;align-items:center}
+.day::after{content:"";flex:1;height:1px;background:var(--line)}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.item{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:14px;padding:13px 16px;border-top:1px solid var(--line);align-items:start}
+.item:first-child{border-top:0}
+.item:hover{background:var(--hover)}
+.time{font:500 13px var(--f-mono);font-variant-numeric:tabular-nums;padding-top:2px}
+.time small{display:block;font-size:11px;color:var(--muted);font-weight:400}
+.body{min-width:0}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-bottom:3px}
+.src{font:600 11px var(--f-mono);letter-spacing:.04em;color:var(--c);text-transform:uppercase}
+.sec{font-size:12px;color:var(--muted)}
+.tag{font-size:11px;font-weight:500;padding:1px 7px;border-radius:4px;background:var(--accent-soft);color:var(--accent)}
+.title{font:600 16px/1.35 var(--f-body);text-decoration:none;display:block;text-wrap:pretty}
+.title:hover{text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:3px}
+.snip{color:var(--muted);font-size:14px;margin:4px 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.thumb{width:96px;height:64px;object-fit:cover;border-radius:6px;background:var(--line)}
+.fresh{border-left:3px solid var(--accent);padding-left:13px}
+@media (max-width:560px){
+  .item{grid-template-columns:minmax(0,1fr);gap:4px}
+  .time{display:flex;gap:8px;align-items:baseline}
+  .time small{display:inline}
+  .thumb{display:none}
+}
+.call{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:8px;font-size:12px}
+.act{font:600 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:4px;border:1px solid currentColor}
+.act.bull{color:var(--ok);background:var(--ok-soft);border-color:transparent}
+.act.bear{color:var(--bad);background:var(--bad-soft);border-color:transparent}
+.act.neu{color:var(--warn)}
+.act.none{color:var(--muted)}
+.call .tp{font:500 12px var(--f-mono);font-variant-numeric:tabular-nums}
+.call .tp b{font-weight:600}
+.call .broker{color:var(--muted)}
+.call .broker b{color:var(--ink);font-weight:500}
+.disclaimer{background:var(--accent-soft);border-radius:10px;padding:12px 14px;font-size:13px;margin:4px 0 6px;max-width:75ch}
+.disclaimer strong{color:var(--accent)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:32px 20px;text-align:center;color:var(--muted)}
+.empty strong{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+.skel{height:76px;border-top:1px solid var(--line);background:linear-gradient(90deg,var(--surface) 0%,var(--hover) 50%,var(--surface) 100%);background-size:200% 100%;animation:sh 1.4s ease infinite}
+.skel:first-child{border-top:0}
+@keyframes sh{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}}
+.foot{font-size:12px;color:var(--muted);padding-block:0 30px}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="wrap">
+    <div class="brand">
+      <h1>Dalal Street <span>Wire</span></h1>
+      <small>Indian financial news</small>
+    </div>
+    <span id="mkt" class="pill closed" title="NSE/BSE equity hours 09:15–15:30 IST, Mon–Fri. Exchange holidays are not accounted for.">Market closed</span>
+    <span id="clock" class="clock">--:--:-- IST</span>
+    <button id="refresh" class="btn primary" type="button">Refresh</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="summary" aria-label="Summary">
+    <div class="stat"><b id="sTotal">–</b><span>Stories loaded</span></div>
+    <div class="stat"><b id="sHour">–</b><span>Last 60 min</span></div>
+    <div class="stat"><b id="sDay">–</b><span>Last 24 hours</span></div>
+    <div class="stat"><b id="sFeeds">–</b><span>Feeds live</span></div>
+  </section>
+
+  <div class="controls">
+    <label class="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search headlines: Reliance, RBI, Nifty IT…" aria-label="Search headlines">
+    </label>
+    <div class="tabs" id="tabs" role="toolbar" aria-label="Categories"></div>
+  </div>
+
+  <div class="grid">
+    <aside class="rail">
+      <div class="panel">
+        <h2>Outlets</h2>
+        <div class="outlets" id="outlets"></div>
+      </div>
+      <div class="panel">
+        <h2>Feed health</h2>
+        <ul class="health" id="health"></ul>
+        <p class="note" id="via"></p>
+      </div>
+      <div class="panel">
+        <h2>Auto-refresh</h2>
+        <label class="toggle"><input id="auto" type="checkbox" checked> Every 10 minutes</label>
+        <p class="note" id="next"></p>
+      </div>
+    </aside>
+
+    <section class="stream" id="stream" aria-live="polite"></section>
+  </div>
+
+  <p class="foot">Headlines come from each publisher's public RSS feed, fetched through a free CORS proxy. Times are shown in IST. Click a headline to read the full story on the publisher's site.</p>
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- Config ---------- */
+  var OUTLETS = {
+    et:   {name:"Economic Times",    color:"--o-et"},
+    mint: {name:"Mint",              color:"--o-mint"},
+    bs:   {name:"Business Standard", color:"--o-bs"},
+    mc:   {name:"Moneycontrol",      color:"--o-mc"},
+    bl:   {name:"BusinessLine",      color:"--o-bl"},
+    fe:   {name:"Financial Express", color:"--o-fe"},
+    cnbc: {name:"CNBC-TV18",         color:"--o-cnbc"},
+    bt:   {name:"Business Today",    color:"--o-bt"},
+    zee:  {name:"Zee Business",      color:"--o-zee"}
+  };
+
+  var FEEDS = [
+    {id:"et-top",     outlet:"et",   section:"Top stories", url:"https://economictimes.indiatimes.com/rssfeedstopstories.cms"},
+    {id:"et-markets", outlet:"et",   section:"Markets",     url:"https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms"},
+    {id:"et-stocks",  outlet:"et",   section:"Stocks",      url:"https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms"},
+    {id:"et-ipo",     outlet:"et",   section:"IPOs",        url:"https://economictimes.indiatimes.com/markets/ipos/fpos/rssfeeds/14655708.cms"},
+    {id:"et-expert",  outlet:"et",   section:"Expert view", url:"https://economictimes.indiatimes.com/markets/expert-view/rssfeeds/50649960.cms"},
+    {id:"et-econ",    outlet:"et",   section:"Economy",     url:"https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms"},
+    {id:"et-cos",     outlet:"et",   section:"Companies",   url:"https://economictimes.indiatimes.com/news/company/rssfeeds/2143429.cms"},
+    {id:"et-bank",    outlet:"et",   section:"Banking & finance", url:"https://economictimes.indiatimes.com/rssfeeds/13358259.cms"},
+    {id:"et-cmdty",   outlet:"et",   section:"Commodities", url:"https://economictimes.indiatimes.com/markets/commodities/rssfeeds/1808152121.cms"},
+    {id:"et-forex",   outlet:"et",   section:"Forex",       url:"https://economictimes.indiatimes.com/markets/forex/rssfeeds/1150221130.cms"},
+    {id:"et-mf",      outlet:"et",   section:"Mutual funds", url:"https://economictimes.indiatimes.com/mf/mf-news/rssfeeds/1107225967.cms"},
+    {id:"mint-mkt",   outlet:"mint", section:"Markets",     url:"https://www.livemint.com/rss/markets"},
+    {id:"mint-money", outlet:"mint", section:"Money",       url:"https://www.livemint.com/rss/money"},
+    {id:"mint-cos",   outlet:"mint", section:"Companies",   url:"https://www.livemint.com/rss/companies"},
+    {id:"bs-mkt",     outlet:"bs",   section:"Markets",     url:"https://www.business-standard.com/rss/markets-106.rss"},
+    {id:"bs-econ",    outlet:"bs",   section:"Economy",     url:"https://www.business-standard.com/rss/economy-102.rss"},
+    {id:"mc-latest",  outlet:"mc",   section:"Latest",      url:"https://www.moneycontrol.com/rss/latestnews.xml"},
+    {id:"mc-biz",     outlet:"mc",   section:"Business",    url:"https://www.moneycontrol.com/rss/business.xml"},
+    {id:"bl-mkt",     outlet:"bl",   section:"Markets",     url:"https://www.thehindubusinessline.com/markets/feeder/default.rss"},
+    {id:"bl-stocks",  outlet:"bl",   section:"Stock markets", url:"https://www.thehindubusinessline.com/markets/stock-markets/feeder/default.rss"},
+    {id:"bl-econ",    outlet:"bl",   section:"Economy",     url:"https://www.thehindubusinessline.com/economy/feeder/default.rss"},
+    {id:"bl-bank",    outlet:"bl",   section:"Money & banking", url:"https://www.thehindubusinessline.com/money-and-banking/feeder/default.rss"},
+    {id:"bl-cos",     outlet:"bl",   section:"Companies",   url:"https://www.thehindubusinessline.com/companies/feeder/default.rss"},
+    {id:"bl-gold",    outlet:"bl",   section:"Gold & silver", url:"https://www.thehindubusinessline.com/markets/gold/feeder/default.rss"},
+    {id:"bl-ta",      outlet:"bl",   section:"Technical analysis", picks:true, url:"https://www.thehindubusinessline.com/portfolio/technical-analysis/feeder/default.rss"},
+    {id:"bl-dtg",     outlet:"bl",   section:"Day trading guide",  picks:true, url:"https://www.thehindubusinessline.com/portfolio/day-trading-guide/feeder/default.rss"},
+    {id:"bl-fund",    outlet:"bl",   section:"Stock fundamentals", picks:true, url:"https://www.thehindubusinessline.com/portfolio/stock-fundamental-analysis-india/feeder/default.rss"},
+    {id:"fe-mkt",     outlet:"fe",   section:"Market",      url:"https://www.financialexpress.com/market/feed/"},
+    {id:"cnbc-mkt",   outlet:"cnbc", section:"Market",      url:"https://www.cnbctv18.com/commonfeeds/v1/cne/rss/market.xml"},
+    {id:"cnbc-econ",  outlet:"cnbc", section:"Economy",     url:"https://www.cnbctv18.com/commonfeeds/v1/cne/rss/economy.xml"},
+    {id:"bt-home",    outlet:"bt",   section:"Latest",      url:"https://www.businesstoday.in/rssfeeds/?id=home"},
+    {id:"zee-econ",   outlet:"zee",  section:"Economy",     url:"https://www.zeebiz.com/india-economy.xml"}
+  ];
+  var CONCURRENCY = 6;
+
+  var PROXIES = [
+    {name:"allorigins", type:"xml",  build:function(u){return "https://api.allorigins.win/raw?url="+encodeURIComponent(u);}},
+    {name:"corsproxy",  type:"xml",  build:function(u){return "https://corsproxy.io/?url="+encodeURIComponent(u);}},
+    {name:"codetabs",   type:"xml",  build:function(u){return "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(u);}},
+    {name:"rss2json",   type:"json", build:function(u){return "https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent(u);}}
+  ];
+
+  var CATS = [
+    {id:"all",   label:"All"},
+    {id:"picks", label:"Stock picks", test:isPick},
+    {id:"mkt",   label:"Markets",       re:/\b(sensex|nifty|stocks?|shares?|markets?|sebi|fii|fpi|dii|f&o|derivatives?|midcap|smallcap|rally|sell-?off)\b/i},
+    {id:"earn",  label:"Earnings",      re:/\b(q[1-4](fy\d+)?|results?|profit|pat|net income|revenue|earnings|ebitda|margin|dividend)\b/i},
+    {id:"ipo",   label:"IPOs",          re:/\b(ipo|listing|gmp|subscribed|subscription|anchor investors|drhp)\b/i},
+    {id:"bank",  label:"Banking & RBI", re:/\b(rbi|banks?|banking|nbfc|repo|lenders?|loans?|deposits?|npa|credit)\b/i},
+    {id:"econ",  label:"Economy",       re:/\b(gdp|inflation|cpi|wpi|rupee|fiscal|economy|economic|exports?|imports?|trade deficit|budget|gst|tax|current account)\b/i},
+    {id:"cmdty", label:"Commodities",   re:/\b(gold|silver|crude|oil|brent|commodit\w*|metals?|copper|aluminium)\b/i}
+  ];
+
+  /* ---------- Stock-pick detection ---------- */
+  var PICK_STRONG = /\b(target price|price target|top picks?|stocks? to (buy|watch|sell)|stock ideas?|stock picks?|trading ideas?|trading strateg\w*|stock recommendations?|recommend\w*|buy rating|sell rating|hold rating|initiates? coverage|upgrade[sd]?|downgrade[sd]?|outperform|underperform|overweight|underweight|technical picks?|buzzing stocks?|stocks? in focus)\b/i;
+  var PICK_ACTION_NEAR_TARGET = /\b(buy|sell|hold|accumulate|reduce|neutral|add)\b[^.]{0,60}\b(target|tp)\b|\b(target|tp)\b[^.]{0,60}\b(buy|sell|hold|accumulate|reduce)\b/i;
+  var PICK_RATED = /['"‘’“”](buy|sell|hold|add|reduce|accumulate|neutral)['"‘’“”]/i;
+  var PICK_ESTIMATES = /\b(raises?|cuts?|lowers?|trims?|hikes?|revises?)\b[^.]{0,25}\b(estimates?|targets?|ratings?|tp)\b/i;
+  var PICK_VERB = /\b(buy|sell|hold|accumulate|reduce|outperform|underperform)\b/i;
+  function isPick(hay){
+    if (PICK_STRONG.test(hay) || PICK_ACTION_NEAR_TARGET.test(hay) || PICK_RATED.test(hay)) return true;
+    var hasBroker = BROKERS.test(hay);
+    return hasBroker && (PICK_VERB.test(hay) || PICK_ESTIMATES.test(hay));
+  }
+
+  var ACTIONS = [
+    {re:/\b(strong buy|buy|accumulate|add|outperform|overweight|upgrade[sd]?)\b/i, cls:"bull"},
+    {re:/\b(sell|reduce|underperform|underweight|downgrade[sd]?)\b/i, cls:"bear"},
+    {re:/\b(hold|neutral|equal-?weight|market-?perform)\b/i, cls:"neu"}
+  ];
+  var BROKERS = /\b(Motilal Oswal|MOFSL|Jefferies|Morgan Stanley|Goldman Sachs|CLSA|Nomura|Kotak Institutional Equities|Kotak Securities|ICICI Securities|HDFC Securities|Axis Securities|JM Financial|Nuvama|Emkay|Prabhudas Lilladher|Anand Rathi|Mirae Asset Sharekhan|Sharekhan|Choice Broking|Choice Institutional Equities|Geojit|SBI Securities|Bernstein|Citi(group)?|Macquarie|UBS|BofA( Securities)?|Bank of America|HSBC|Elara Securities|Elara|Systematix|Antique Stock Broking|Centrum|Ventura Securities|IIFL( Securities)?|Religare Broking|Bonanza|InCred Equities|PhillipCapital|Phillip Capital|Investec|JPMorgan|JP Morgan|Dolat Capital|Yes Securities|Equirus|Ashika|Arihant Capital|StoxBox|Bajaj Broking)\b/i;
+  var TARGET = [
+    /\b(?:target(?: price)?|tp|price target)\b(?:\s+(?:of|at|to|is|:))?\s*(?:rs\.?|₹|inr)?\s*([\d,]{2,}(?:\.\d+)?)/i,
+    /(?:rs\.?|₹|inr)\s*([\d,]{2,}(?:\.\d+)?)\s*(?:target|tp)\b/i
+  ];
+  function extractCall(title, desc){
+    var call = {action:"", cls:"none", target:"", broker:""};
+    var srcs = [title, desc];
+    for (var s=0;s<srcs.length && !call.action;s++){
+      var best = null;
+      ACTIONS.forEach(function(a){
+        var m = a.re.exec(srcs[s]||"");
+        if (m && (!best || m.index < best.idx)) best = {idx:m.index, word:m[1], cls:a.cls};
+      });
+      if (best){
+        var w = best.word.replace(/^upgrade[sd]?$/i,"Upgrade").replace(/^downgrade[sd]?$/i,"Downgrade");
+        call.action = w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+        call.cls = best.cls;
+      }
+    }
+    for (var t=0;t<srcs.length && !call.target;t++){
+      for (var r=0;r<TARGET.length;r++){
+        var m2 = TARGET[r].exec(srcs[t]||"");
+        if (m2){ var v = parseFloat(m2[1].replace(/,/g,"")); if (v >= 1) { call.target = v.toLocaleString("en-IN",{maximumFractionDigits:2}); break; } }
+      }
+    }
+    var b = BROKERS.exec(title) || BROKERS.exec(desc||"");
+    if (b) call.broker = b[1];
+    return call;
+  }
+
+  var REFRESH_MS = 10*60*1000;
+  var FEED_TIMEOUT = 12000;
+
+  /* ---------- State ---------- */
+  var state = {
+    items: [],
+    status: {},          // feedId -> {s:'load'|'ok'|'err', n, via, err}
+    outletOn: {},        // outlet -> bool
+    cat: "all",
+    q: "",
+    loading: false,
+    lastLoad: null,
+    nextAt: null,
+    goodProxy: null
+  };
+  Object.keys(OUTLETS).forEach(function(k){ state.outletOn[k] = true; });
+
+  function store(k, v){ try{ localStorage.setItem("dsw:"+k, JSON.stringify(v)); }catch(e){} }
+  function recall(k){ try{ var v = localStorage.getItem("dsw:"+k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+  var saved = recall("outlets"); if (saved) Object.keys(saved).forEach(function(k){ if (k in state.outletOn) state.outletOn[k] = !!saved[k]; });
+  var savedCat = recall("cat"); if (savedCat && CATS.some(function(c){return c.id===savedCat;})) state.cat = savedCat;
+  var savedAuto = recall("auto"); if (savedAuto === false) document.getElementById("auto").checked = false;
+  state.goodProxy = recall("proxy");
+
+  /* ---------- Helpers ---------- */
+  var $ = function(id){ return document.getElementById(id); };
+  function el(tag, attrs, kids){
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function(k){
+      if (k === "text") n.textContent = attrs[k];
+      else if (k === "style") n.setAttribute("style", attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    });
+    (kids||[]).forEach(function(c){ if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function stripHtml(s){
+    if (!s) return "";
+    try { return (new DOMParser().parseFromString(s, "text/html").body.textContent || "").replace(/\s+/g," ").trim(); }
+    catch(e){ return String(s).replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim(); }
+  }
+  var istTime = new Intl.DateTimeFormat("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:false});
+  var istClock = new Intl.DateTimeFormat("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});
+  var istDayKey = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"});
+  var istDayLabel = new Intl.DateTimeFormat("en-IN",{timeZone:"Asia/Kolkata",weekday:"long",day:"numeric",month:"short"});
+  function ago(d){
+    var s = Math.round((Date.now()-d)/1000);
+    if (s < 60) return "just now";
+    var m = Math.round(s/60); if (m < 60) return m+" min ago";
+    var h = Math.round(m/60); if (h < 24) return h+" hr ago";
+    var dd = Math.round(h/24); return dd+(dd===1?" day ago":" days ago");
+  }
+  function parseDate(s){
+    if (!s) return null;
+    s = String(s).trim();
+    var d = new Date(s);
+    if (isNaN(d) && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) d = new Date(s.replace(" ","T")+"Z"); // rss2json UTC
+    return isNaN(d) ? null : d;
+  }
+  function childText(node, names){
+    for (var i=0;i<node.children.length;i++){
+      var c = node.children[i];
+      if (names.indexOf(c.localName) !== -1 && c.textContent.trim()) return c.textContent.trim();
+    }
+    return "";
+  }
+
+  /* ---------- Fetching ---------- */
+  function fetchT(url){
+    var ctl = ("AbortController" in window) ? new AbortController() : null;
+    var t = setTimeout(function(){ if (ctl) ctl.abort(); }, FEED_TIMEOUT);
+    return fetch(url, ctl ? {signal:ctl.signal} : {}).then(function(r){
+      clearTimeout(t);
+      if (!r.ok) throw new Error("HTTP "+r.status);
+      return r.text();
+    }, function(e){ clearTimeout(t); throw e; });
+  }
+
+  function parseXml(text, feed){
+    var doc = new DOMParser().parseFromString(text, "text/xml");
+    if (doc.getElementsByTagName("parsererror").length) throw new Error("Not a valid feed");
+    var nodes = doc.getElementsByTagName("item");
+    if (!nodes.length) nodes = doc.getElementsByTagName("entry");
+    if (!nodes.length) throw new Error("Feed has no items");
+    var out = [];
+    for (var i=0;i<nodes.length;i++){
+      var n = nodes[i];
+      var link = childText(n, ["link"]);
+      if (!link){
+        for (var j=0;j<n.children.length;j++){ var c=n.children[j]; if (c.localName==="link" && c.getAttribute("href")){ link=c.getAttribute("href"); break; } }
+      }
+      var img = "";
+      for (var k=0;k<n.children.length;k++){
+        var ch = n.children[k], ln = ch.localName, u = ch.getAttribute("url");
+        if (u && (ln==="content" || ln==="thumbnail")){ img = u; break; }
+        if (ln==="enclosure" && u && /image/.test(ch.getAttribute("type")||"image")){ img = u; break; }
+      }
+      out.push(mkItem(feed, {
+        title: childText(n, ["title"]),
+        link: link,
+        date: childText(n, ["pubDate","published","updated","date"]),
+        desc: childText(n, ["description","summary","content"]),
+        img: img
+      }));
+    }
+    return out;
+  }
+
+  function parseJson(text, feed){
+    var j = JSON.parse(text);
+    if (j.status !== "ok" || !j.items) throw new Error(j.message || "Proxy returned no items");
+    return j.items.map(function(it){
+      return mkItem(feed, {title:it.title, link:it.link, date:it.pubDate, desc:it.description,
+        img: it.thumbnail || (it.enclosure && it.enclosure.link) || ""});
+    });
+  }
+
+  function mkItem(feed, r){
+    var title = stripHtml(r.title);
+    var desc = stripHtml(r.desc);
+    if (desc.length > 320) desc = desc.slice(0, 317).replace(/\s+\S*$/,"")+"…";
+    if (desc === title) desc = "";
+    var hay = title+" "+desc;
+    var tags = CATS.filter(function(c){ return c.test ? c.test(hay) : (c.re && c.re.test(hay)); }).map(function(c){ return c.id; });
+    if (feed.picks && tags.indexOf("picks") === -1) tags.unshift("picks");
+    return {
+      feed: feed.id, outlet: feed.outlet, section: feed.section,
+      title: title, link: (r.link||"").trim(), desc: desc,
+      date: parseDate(r.date), img: /^https?:/.test(r.img||"") ? r.img : "",
+      tags: tags,
+      call: tags.indexOf("picks") !== -1 ? extractCall(title, desc) : null
+    };
+  }
+
+  function proxyOrder(){
+    if (!state.goodProxy) return PROXIES.slice();
+    var p = PROXIES.filter(function(x){ return x.name===state.goodProxy; });
+    return p.concat(PROXIES.filter(function(x){ return x.name!==state.goodProxy; }));
+  }
+
+  function loadFeed(feed){
+    var order = proxyOrder(), i = 0, lastErr = null;
+    function attempt(){
+      if (i >= order.length) return Promise.reject(lastErr || new Error("All proxies failed"));
+      var p = order[i++];
+      return fetchT(p.build(feed.url)).then(function(text){
+        var items = p.type === "json" ? parseJson(text, feed) : parseXml(text, feed);
+        return {items:items, via:p.name};
+      }).catch(function(e){ lastErr = e; return attempt(); });
+    }
+    return attempt();
+  }
+
+  function loadAll(){
+    if (state.loading) return;
+    state.loading = true;
+    var btn = $("refresh");
+    btn.disabled = true; btn.innerHTML = '<span class="spin" aria-hidden="true"></span> Loading';
+    FEEDS.forEach(function(f){ state.status[f.id] = {s:"load", n:(state.status[f.id]||{}).n||0}; });
+    renderHealth();
+    if (!state.items.length) renderSkeleton();
+
+    var collected = [], viaCount = {};
+    // Run at most CONCURRENCY feeds at once so free proxies don't rate-limit us
+    var queue = FEEDS.slice(), running = [];
+    function worker(){
+      var f = queue.shift();
+      if (!f) return Promise.resolve();
+      return runOne(f).then(worker);
+    }
+    for (var w=0; w<Math.min(CONCURRENCY, queue.length); w++) running.push(worker());
+    var jobs = running;
+    function runOne(f){
+      return loadFeed(f).then(function(res){
+        state.status[f.id] = {s:"ok", n:res.items.length, via:res.via};
+        viaCount[res.via] = (viaCount[res.via]||0)+1;
+        collected = collected.concat(res.items);
+        renderHealth();
+      }, function(err){
+        state.status[f.id] = {s:"err", n:0, err:(err && err.name==="AbortError") ? "Timed out" : (err && err.message) || "Failed"};
+        renderHealth();
+      });
+    }
+
+    Promise.all(jobs).then(function(){
+      // Keep previous items if every feed failed (e.g. offline)
+      if (collected.length) state.items = dedupe(collected);
+      var best = Object.keys(viaCount).sort(function(a,b){ return viaCount[b]-viaCount[a]; })[0];
+      if (best){ state.goodProxy = best; store("proxy", best); }
+      state.lastLoad = new Date();
+      state.loading = false;
+      btn.disabled = false; btn.textContent = "Refresh";
+      scheduleNext();
+      render();
+    });
+  }
+
+  function dedupe(list){
+    var seen = {}, out = [];
+    list.sort(function(a,b){ return (b.date||0) - (a.date||0); });
+    list.forEach(function(it){
+      if (!it.title || !it.link) return;
+      var k1 = it.link.replace(/[?#].*$/,"").replace(/\/$/,"").toLowerCase();
+      var k2 = it.outlet+"|"+it.title.toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+      if (seen[k1] || seen[k2]) return;
+      seen[k1] = seen[k2] = 1;
+      out.push(it);
+    });
+    return out;
+  }
+
+  /* ---------- Rendering ---------- */
+  function visible(){
+    var q = state.q.toLowerCase().trim();
+    var terms = q ? q.split(/\s+/) : [];
+    return state.items.filter(function(it){
+      if (!state.outletOn[it.outlet]) return false;
+      if (state.cat !== "all" && it.tags.indexOf(state.cat) === -1) return false;
+      if (terms.length){
+        var hay = (it.title+" "+it.desc+" "+OUTLETS[it.outlet].name).toLowerCase();
+        for (var i=0;i<terms.length;i++) if (hay.indexOf(terms[i]) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  function renderTabs(){
+    var base = state.items.filter(function(it){ return state.outletOn[it.outlet]; });
+    var box = $("tabs"); box.textContent = "";
+    CATS.forEach(function(c){
+      var n = c.id==="all" ? base.length : base.filter(function(it){ return it.tags.indexOf(c.id)!==-1; }).length;
+      var b = el("button",{type:"button","class":"tab","aria-pressed":String(state.cat===c.id)},[c.label, el("em",{text:state.items.length?String(n):""})]);
+      b.addEventListener("click", function(){ state.cat = c.id; store("cat", c.id); render(); });
+      box.appendChild(b);
+    });
+  }
+
+  function renderOutlets(){
+    var box = $("outlets"); box.textContent = "";
+    Object.keys(OUTLETS).forEach(function(k){
+      var o = OUTLETS[k];
+      var n = state.items.filter(function(it){ return it.outlet===k; }).length;
+      var b = el("button",{type:"button","class":"outlet","aria-pressed":String(state.outletOn[k]),style:"--c:var("+o.color+")",title:"Show or hide "+o.name},
+        [el("span",{"class":"sw"}), o.name, el("span",{"class":"n",text:state.items.length?String(n):""})]);
+      b.addEventListener("click", function(){ state.outletOn[k] = !state.outletOn[k]; store("outlets", state.outletOn); render(); });
+      box.appendChild(b);
+    });
+  }
+
+  function renderHealth(){
+    var box = $("health"); box.textContent = "";
+    var live = 0;
+    FEEDS.forEach(function(f){
+      var st = state.status[f.id] || {s:"load"};
+      if (st.s === "ok") live++;
+      var meta = st.s==="ok" ? st.n+" items" : st.s==="err" ? "failed" : "loading";
+      box.appendChild(el("li",{title: st.s==="err" ? (OUTLETS[f.outlet].name+" "+f.section+": "+st.err+"\n"+f.url) : f.url},[
+        el("span",{"class":"dot "+st.s}),
+        el("span",{"class":"lbl",text:OUTLETS[f.outlet].name+" · "+f.section}),
+        el("span",{"class":"meta",text:meta})
+      ]));
+    });
+    $("sFeeds").textContent = live+"/"+FEEDS.length;
+    $("via").textContent = state.goodProxy ? "Fetching through the "+state.goodProxy+" proxy. Hover a failed feed to see why." : "";
+  }
+
+  function renderSummary(){
+    var now = Date.now(), h = 0, d = 0;
+    state.items.forEach(function(it){
+      if (!it.date) return;
+      var age = now - it.date;
+      if (age <= 3600e3) h++;
+      if (age <= 86400e3) d++;
+    });
+    $("sTotal").textContent = state.items.length;
+    $("sHour").textContent = h;
+    $("sDay").textContent = d;
+  }
+
+  function renderSkeleton(){
+    var s = $("stream"); s.textContent = "";
+    s.appendChild(el("div",{"class":"day",text:"Loading feeds"}));
+    var l = el("div",{"class":"list"});
+    for (var i=0;i<6;i++) l.appendChild(el("div",{"class":"skel"}));
+    s.appendChild(l);
+  }
+
+  function renderStream(){
+    var s = $("stream"); s.textContent = "";
+    if (!state.items.length && !state.loading){
+      s.appendChild(el("div",{"class":"empty"},[
+        el("strong",{text:"No feeds could be loaded"}),
+        "The free proxies may be down or rate-limiting, or you may be offline. Wait a minute and press Refresh."
+      ]));
+      return;
+    }
+    var list = visible();
+    var picksView = state.cat === "picks";
+    if (picksView){
+      s.appendChild(el("div",{"class":"disclaimer"},[
+        el("strong",{text:"Not investment advice. "}),
+        "These are calls by brokerages and analysts as reported in news stories. The rating, target and brokerage are read automatically from each headline and summary, so they can be wrong or missing. Open the article and check before acting."
+      ]));
+    }
+    if (!list.length){
+      s.appendChild(el("div",{"class":"empty"},[
+        el("strong",{text:"No stories match"}),
+        "Try a different search, another category, or switch more outlets on."
+      ]));
+      return;
+    }
+    var todayKey = istDayKey.format(new Date());
+    var yKey = istDayKey.format(new Date(Date.now()-86400e3));
+    var curKey = null, box = null, now = Date.now();
+    list.slice(0, 400).forEach(function(it){
+      var key = it.date ? istDayKey.format(it.date) : "undated";
+      if (key !== curKey){
+        curKey = key;
+        var label = key==="undated" ? "Undated" : key===todayKey ? "Today" : key===yKey ? "Yesterday" : istDayLabel.format(it.date);
+        s.appendChild(el("div",{"class":"day",text:label}));
+        box = el("div",{"class":"list"}); s.appendChild(box);
+      }
+      var o = OUTLETS[it.outlet];
+      var tags = it.tags.filter(function(t){ return t !== state.cat; }).slice(0,3).map(function(t){
+        var c = CATS.filter(function(x){ return x.id===t; })[0];
+        return el("span",{"class":"tag",text:c.label});
+      });
+      var fresh = it.date && (now - it.date) < 3600e3;
+      var row = el("article",{"class":"item"},[
+        el("div",{"class":"time"},[ it.date ? istTime.format(it.date) : "--:--", el("small",{text: it.date ? ago(it.date) : ""}) ]),
+        el("div",{"class":"body"+(fresh?" fresh":"")},[
+          el("div",{"class":"top"},[ el("span",{"class":"src",style:"--c:var("+o.color+")",text:o.name}), el("span",{"class":"sec",text:it.section}) ].concat(tags)),
+          el("a",{"class":"title",href:it.link,target:"_blank",rel:"noopener noreferrer",text:it.title}),
+          it.desc ? el("p",{"class":"snip",text:it.desc}) : null,
+          (picksView && it.call) ? el("div",{"class":"call"},[
+            el("span",{"class":"act "+it.call.cls,text: it.call.action || "Call"}),
+            it.call.target ? el("span",{"class":"tp"},["Target ", el("b",{text:"₹"+it.call.target})]) : null,
+            it.call.broker ? el("span",{"class":"broker"},["by ", el("b",{text:it.call.broker})]) : null
+          ]) : null
+        ]),
+        it.img ? (function(){
+          var im = el("img",{"class":"thumb",src:it.img,alt:"",loading:"lazy",referrerpolicy:"no-referrer"});
+          im.addEventListener("error", function(){ im.remove(); });
+          return im;
+        })() : null
+      ]);
+      box.appendChild(row);
+    });
+  }
+
+  function render(){
+    renderOutlets(); renderTabs(); renderSummary(); renderHealth(); renderStream();
+  }
+
+  /* ---------- Clock, market status, auto-refresh ---------- */
+  function tick(){
+    var now = new Date();
+    $("clock").textContent = istClock.format(now)+" IST";
+    var parts = new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kolkata",weekday:"short",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(now);
+    var get = function(t){ return (parts.filter(function(p){return p.type===t;})[0]||{}).value; };
+    var wd = get("weekday"), mins = parseInt(get("hour"),10)*60 + parseInt(get("minute"),10);
+    var open = wd!=="Sat" && wd!=="Sun" && mins >= 555 && mins < 930;
+    var pill = $("mkt");
+    pill.className = "pill "+(open?"open":"closed");
+    pill.textContent = open ? "Market open" : (mins >= 540 && mins < 555 && wd!=="Sat" && wd!=="Sun") ? "Pre-open" : "Market closed";
+    // Next refresh countdown
+    var auto = $("auto").checked;
+    if (auto && state.nextAt){
+      var left = Math.max(0, state.nextAt - Date.now());
+      $("next").textContent = state.loading ? "Refreshing now…" : "Next refresh in "+Math.floor(left/60000)+":"+String(Math.floor(left/1000)%60).padStart(2,"0");
+      if (left === 0 && !state.loading) loadAll();
+    } else {
+      $("next").textContent = state.lastLoad ? "Last updated "+istTime.format(state.lastLoad)+" IST" : "";
+    }
+    // keep relative times fresh roughly every minute
+    if (now.getSeconds() === 0 && state.items.length) { renderSummary(); renderStream(); }
+  }
+  function scheduleNext(){ state.nextAt = $("auto").checked ? Date.now() + REFRESH_MS : null; }
+
+  /* ---------- Wire up ---------- */
+  $("refresh").addEventListener("click", loadAll);
+  var qt;
+  $("q").addEventListener("input", function(e){ clearTimeout(qt); var v = e.target.value; qt = setTimeout(function(){ state.q = v; renderStream(); }, 120); });
+  $("auto").addEventListener("change", function(e){ store("auto", e.target.checked); scheduleNext(); });
+  document.addEventListener("visibilitychange", function(){
+    if (!document.hidden && $("auto").checked && state.lastLoad && Date.now() - state.lastLoad > REFRESH_MS) loadAll();
+  });
+
+  render();
+  tick(); setInterval(tick, 1000);
+  loadAll();
+})();
+</script>
+</body>
+</html>
