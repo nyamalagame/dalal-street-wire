@@ -16,6 +16,7 @@
   --o-et:#C2410C; --o-mint:#0F766E; --o-bs:#1D4ED8; --o-mc:#7C3AED; --o-bl:#B45309; --o-fe:#BE185D;
   --o-cnbc:#0369A1; --o-bt:#4D7C0F; --o-zee:#9F1239;
   --o-print:#B91C1C; --o-me:#475569; --o-te:#0E7490;
+  --o-hindu:#1E3A8A; --o-etb:#A16207; --o-nse:#15803D;
   --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
   --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
@@ -29,6 +30,7 @@
     --o-et:#FB8A55; --o-mint:#3CC7B8; --o-bs:#7AA2FF; --o-mc:#B49BFF; --o-bl:#F0B05A; --o-fe:#F57FB4;
     --o-cnbc:#5CC2F2; --o-bt:#A3D65C; --o-zee:#F7839B;
     --o-print:#F87171; --o-me:#A5B1C4; --o-te:#4FD1E0;
+    --o-hindu:#93B4FF; --o-etb:#E8C15A; --o-nse:#5FD98A;
     color-scheme:dark;
   }
 }
@@ -222,7 +224,10 @@ button,input{font:inherit;color:inherit}
     zee:  {name:"Zee Business",      color:"--o-zee"},
     print:{name:"ThePrint",          color:"--o-print"},
     me:   {name:"Mostly Economics",  color:"--o-me"},
-    te:   {name:"Trading Economics", color:"--o-te"}
+    te:   {name:"Trading Economics", color:"--o-te"},
+    hindu:{name:"The Hindu",         color:"--o-hindu"},
+    etb:  {name:"ETBFSI",            color:"--o-etb"},
+    nse:  {name:"NSE",               color:"--o-nse"}
   };
 
   var FEEDS = [
@@ -260,7 +265,20 @@ button,input{font:inherit;color:inherit}
     {id:"zee-econ",   outlet:"zee",  section:"Economy",     url:"https://www.zeebiz.com/india-economy.xml"},
     {id:"print-econ", outlet:"print",section:"Economy",     url:"https://theprint.in/category/economy/feed/"},
     {id:"me-blog",    outlet:"me",   section:"Blog",        url:"https://mostlyeconomics.wordpress.com/feed/"},
-    {id:"te-india",   outlet:"te",   section:"India",       url:"https://tradingeconomics.com/india/rss"}
+    {id:"te-india",   outlet:"te",   section:"India",       url:"https://tradingeconomics.com/india/rss"},
+    {id:"hindu-biz",  outlet:"hindu",section:"Business",    url:"https://www.thehindu.com/business/feeder/default.rss"},
+    {id:"hindu-mkt",  outlet:"hindu",section:"Markets",     url:"https://www.thehindu.com/business/markets/feeder/default.rss"},
+    {id:"hindu-econ", outlet:"hindu",section:"Economy",     url:"https://www.thehindu.com/business/Economy/feeder/default.rss"},
+    {id:"hindu-ind",  outlet:"hindu",section:"Industry",    url:"https://www.thehindu.com/business/Industry/feeder/default.rss"},
+    {id:"etb-latest", outlet:"etb",  section:"Latest",      url:"https://bfsi.economictimes.indiatimes.com/rss/recentstories"},
+    /* NSE exchange filings: shown only in the "NSE filings" tab */
+    {id:"nse-ann",    outlet:"nse",  section:"Announcement",     kind:"filing", url:"https://nsearchives.nseindia.com/content/RSS/Online_announcements.xml"},
+    {id:"nse-results",outlet:"nse",  section:"Financial results", kind:"filing", url:"https://nsearchives.nseindia.com/content/RSS/Financial_Results.xml"},
+    {id:"nse-board",  outlet:"nse",  section:"Board meeting",    kind:"filing", url:"https://nsearchives.nseindia.com/content/RSS/Board_Meetings.xml"},
+    {id:"nse-ca",     outlet:"nse",  section:"Corporate action", kind:"filing", url:"https://nsearchives.nseindia.com/content/RSS/Corporate_action.xml"},
+    {id:"nse-insider",outlet:"nse",  section:"Insider trading",  kind:"filing", url:"https://nsearchives.nseindia.com/content/RSS/InsiderTrading.xml"},
+    {id:"nse-offer",  outlet:"nse",  section:"Offer document",   kind:"filing", url:"https://nsearchives.nseindia.com/content/RSS/Offer_Documents.xml"},
+    {id:"nse-circ",   outlet:"nse",  section:"Circular",         kind:"filing", url:"https://nsearchives.nseindia.com/content/RSS/Circulars.xml"}
   ];
   var CONCURRENCY = 6;
 
@@ -274,6 +292,7 @@ button,input{font:inherit;color:inherit}
   var CATS = [
     {id:"all",   label:"All"},
     {id:"picks", label:"Stock picks", test:isPick},
+    {id:"filings", label:"NSE filings", filingsOnly:true},
     {id:"mkt",   label:"Markets",       re:/\b(sensex|nifty|stocks?|shares?|markets?|sebi|fii|fpi|dii|f&o|derivatives?|midcap|smallcap|rally|sell-?off)\b/i},
     {id:"earn",  label:"Earnings",      re:/\b(q[1-4](fy\d+)?|results?|profit|pat|net income|revenue|earnings|ebitda|margin|dividend)\b/i},
     {id:"ipo",   label:"IPOs",          re:/\b(ipo|listing|gmp|subscribed|subscription|anchor investors|drhp)\b/i},
@@ -385,6 +404,16 @@ button,input{font:inherit;color:inherit}
   function parseDate(s){
     if (!s) return null;
     s = String(s).trim();
+    // NSE format: "17-Oct-2026 00:41:51", in IST
+    var nse = /^(\d{1,2})-([A-Za-z]{3})-(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(s);
+    if (nse){
+      var mi = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"].indexOf(nse[2].toLowerCase());
+      if (mi >= 0){
+        var iso = nse[3]+"-"+String(mi+1).padStart(2,"0")+"-"+nse[1].padStart(2,"0")+"T"+nse[4]+":"+nse[5]+":"+(nse[6]||"00")+"+05:30";
+        var dn = new Date(iso);
+        if (!isNaN(dn)) return dn;
+      }
+    }
     var d = new Date(s);
     if (isNaN(d) && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) d = new Date(s.replace(" ","T")+"Z"); // rss2json UTC
     return isNaN(d) ? null : d;
@@ -453,6 +482,13 @@ button,input{font:inherit;color:inherit}
     if (desc.length > 320) desc = desc.slice(0, 317).replace(/\s+\S*$/,"")+"…";
     if (desc === title) desc = "";
     var hay = title+" "+desc;
+    if (feed.kind === "filing"){
+      return {
+        feed: feed.id, outlet: feed.outlet, section: feed.section, filing: true,
+        title: title, link: (r.link||"").trim(), desc: desc,
+        date: parseDate(r.date), img: "", tags: ["filings"], call: null
+      };
+    }
     var tags = CATS.filter(function(c){ return c.test ? c.test(hay) : (c.re && c.re.test(hay)); }).map(function(c){ return c.id; });
     if (feed.picks && tags.indexOf("picks") === -1) tags.unshift("picks");
     return {
@@ -532,8 +568,8 @@ button,input{font:inherit;color:inherit}
     list.sort(function(a,b){ return (b.date||0) - (a.date||0); });
     list.forEach(function(it){
       if (!it.title || !it.link) return;
-      var k1 = it.link.replace(/[?#].*$/,"").replace(/\/$/,"").toLowerCase();
-      var k2 = it.outlet+"|"+it.title.toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+      var k1 = it.link.replace(/[?#].*$/,"").replace(/\/$/,"").toLowerCase() + (it.filing ? "|"+it.desc : "");
+      var k2 = it.outlet+"|"+it.title.toLowerCase().replace(/[^a-z0-9]+/g," ").trim() + (it.filing ? "|"+it.desc+"|"+(it.date||"") : "");
       if (seen[k1] || seen[k2]) return;
       seen[k1] = seen[k2] = 1;
       out.push(it);
@@ -545,8 +581,10 @@ button,input{font:inherit;color:inherit}
   function visible(){
     var q = state.q.toLowerCase().trim();
     var terms = q ? q.split(/\s+/) : [];
+    var filingsView = state.cat === "filings";
     return state.items.filter(function(it){
       if (!state.outletOn[it.outlet]) return false;
+      if (!!it.filing !== filingsView) return false;
       if (state.cat !== "all" && it.tags.indexOf(state.cat) === -1) return false;
       if (terms.length){
         var hay = (it.title+" "+it.desc+" "+OUTLETS[it.outlet].name).toLowerCase();
@@ -558,9 +596,11 @@ button,input{font:inherit;color:inherit}
 
   function renderTabs(){
     var base = state.items.filter(function(it){ return state.outletOn[it.outlet]; });
+    var news = base.filter(function(it){ return !it.filing; });
     var box = $("tabs"); box.textContent = "";
     CATS.forEach(function(c){
-      var n = c.id==="all" ? base.length : base.filter(function(it){ return it.tags.indexOf(c.id)!==-1; }).length;
+      var pool = c.filingsOnly ? base : news;
+      var n = c.id==="all" ? news.length : pool.filter(function(it){ return it.tags.indexOf(c.id)!==-1; }).length;
       var b = el("button",{type:"button","class":"tab","aria-pressed":String(state.cat===c.id)},[c.label, el("em",{text:state.items.length?String(n):""})]);
       b.addEventListener("click", function(){ state.cat = c.id; store("cat", c.id); render(); });
       box.appendChild(b);
@@ -598,13 +638,14 @@ button,input{font:inherit;color:inherit}
 
   function renderSummary(){
     var now = Date.now(), h = 0, d = 0;
-    state.items.forEach(function(it){
+    var news = state.items.filter(function(it){ return !it.filing; });
+    news.forEach(function(it){
       if (!it.date) return;
       var age = now - it.date;
       if (age <= 3600e3) h++;
       if (age <= 86400e3) d++;
     });
-    $("sTotal").textContent = state.items.length;
+    $("sTotal").textContent = news.length;
     $("sHour").textContent = h;
     $("sDay").textContent = d;
   }
@@ -632,6 +673,12 @@ button,input{font:inherit;color:inherit}
       s.appendChild(el("div",{"class":"disclaimer"},[
         el("strong",{text:"Not investment advice. "}),
         "These are calls by brokerages and analysts as reported in news stories. The rating, target and brokerage are read automatically from each headline and summary, so they can be wrong or missing. Open the article and check before acting."
+      ]));
+    }
+    if (state.cat === "filings"){
+      s.appendChild(el("div",{"class":"disclaimer"},[
+        el("strong",{text:"Official NSE filings. "}),
+        "Each entry is a company disclosure published by the exchange: announcements, results, board meetings, corporate actions, insider trades, offer documents and circulars. Links open the filing itself."
       ]));
     }
     if (!list.length){

@@ -4,9 +4,10 @@ A single-page dashboard that pulls Indian financial news from public RSS feeds i
 
 ## Features
 
-- 35 feeds from 12 sources: Economic Times, Mint, Business Standard, Moneycontrol, BusinessLine, Financial Express, CNBC-TV18, Business Today, Zee Business, ThePrint, Mostly Economics and Trading Economics
+- 40 news feeds from 14 outlets: Economic Times, Mint, Business Standard, Moneycontrol, BusinessLine, Financial Express, CNBC-TV18, Business Today, Zee Business, ThePrint, Mostly Economics, Trading Economics, The Hindu and ETBFSI
+- 7 official NSE feeds (announcements, financial results, board meetings, corporate actions, insider trading, offer documents and circulars), shown in their own **NSE filings** tab so they don't crowd the news
 - One merged stream, de-duplicated and grouped by day in IST
-- Category tabs: Stock picks, Markets, Earnings, IPOs, Banking & RBI, Economy, Commodities
+- Category tabs: Stock picks, NSE filings, Markets, Earnings, IPOs, Banking & RBI, Economy, Commodities
 - **Stock picks** tab that highlights brokerage and analyst calls, with the rating, target price and brokerage read from each headline
 - Keyword search and per-outlet toggles
 - Feed health panel showing which feeds loaded and which failed
