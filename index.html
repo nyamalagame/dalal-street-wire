@@ -11,6 +11,7 @@
 /* Layout: sticky masthead, left rail (outlets + feed health), main news stream grouped by IST day */
 :root{
   --bg:#F2F3F7; --surface:#FFFFFF; --ink:#15192B; --muted:#5B6178; --line:#DDE0E8; --hover:#F7F8FB;
+  --scrim:rgba(21,25,43,.38);
   --accent:#B0680A; --accent-soft:#F6EBDB;
   --ok:#1E7F4F; --warn:#A86A00; --bad:#B3261E; --ok-soft:#E3F2EA; --bad-soft:#F9E3E1;
   --o-et:#C2410C; --o-mint:#0F766E; --o-bs:#1D4ED8; --o-mc:#7C3AED; --o-bl:#B45309; --o-fe:#BE185D;
@@ -26,6 +27,7 @@
 @media (prefers-color-scheme:dark){
   :root{
     --bg:#0E1120; --surface:#161A2B; --ink:#E7E9F2; --muted:#979CB3; --line:#272C42; --hover:#1C2134;
+    --scrim:rgba(0,0,0,.55);
     --accent:#E9A23B; --accent-soft:#2E2617;
     --ok:#4ADE95; --warn:#F2B84B; --bad:#F2857C; --ok-soft:#16291F; --bad-soft:#331A1A;
     --o-et:#FB8A55; --o-mint:#3CC7B8; --o-bs:#7AA2FF; --o-mc:#B49BFF; --o-bl:#F0B05A; --o-fe:#F57FB4;
@@ -85,21 +87,40 @@ button,input{font:inherit;color:inherit}
 .tab em{font-style:normal;font:500 11px var(--f-mono);margin-left:4px;color:var(--muted)}
 
 /* Body grid */
-.grid{display:grid;grid-template-columns:260px minmax(0,1fr);gap:20px;align-items:start;padding-bottom:40px}
-@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
-.rail{position:sticky;top:76px;display:flex;flex-direction:column;gap:16px}
-@media (max-width:860px){.rail{position:static}}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);padding-bottom:40px}
+
+/* Sources drawer: outlets, feed health and fetch info, opened from the masthead */
+.srcbtn .sdot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+.srcbtn .sdot.warn{background:var(--warn)}
+.srcbtn .sdot.load{background:var(--muted)}
+.srcbtn .scount{font:500 12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.srcbtn .sfilter{font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.scrim{position:fixed;inset:0;z-index:40;background:var(--scrim)}
+.drawer{position:fixed;top:0;right:0;bottom:0;z-index:41;width:min(380px,100%);background:var(--bg);border-left:1px solid var(--line);box-shadow:-12px 0 32px var(--scrim);overflow-y:auto;overscroll-behavior:contain;
+  padding-top:max(16px,env(safe-area-inset-top,0px));padding-bottom:max(24px,env(safe-area-inset-bottom,0px));padding-left:16px;padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:14px;animation:slidein .18s ease-out}
+.drawer[hidden],.scrim[hidden]{display:none}
+@keyframes slidein{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.drawer{animation:none}}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.drawer-head h2{font:700 18px var(--f-display);margin:0}
+.iconbtn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer}
+.iconbtn:hover{background:var(--hover)}
+.panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
+.panel-head h2{margin:0}
+.linkbtn{border:0;background:none;padding:0;font-size:12px;font-weight:500;color:var(--accent);cursor:pointer}
+.linkbtn:hover{text-decoration:underline}
+body.drawer-open{overflow:hidden}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
 .panel h2{font:600 11px var(--f-mono);text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 10px}
-.outlets{display:flex;flex-direction:column;gap:4px}
-@media (max-width:860px){.outlets{flex-direction:row;flex-wrap:wrap}}
+.outlets{display:flex;flex-direction:column;gap:2px}
 .outlet{display:flex;align-items:center;gap:8px;border:1px solid transparent;background:none;border-radius:7px;padding:6px 8px;cursor:pointer;text-align:left;font-size:14px}
 .outlet:hover{background:var(--hover)}
 .outlet .sw{width:10px;height:10px;border-radius:3px;background:var(--c);flex:none}
 .outlet .n{margin-left:auto;font:500 12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
 .outlet[aria-pressed="false"]{opacity:.45}
 .outlet[aria-pressed="false"] .sw{background:none;box-shadow:inset 0 0 0 1.5px var(--c)}
-.health{list-style:none;margin:0;padding:0 4px 0 0;display:flex;flex-direction:column;gap:7px;font-size:13px;max-height:340px;overflow-y:auto}
+.health{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;font-size:13px}
 .health li{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:8px;align-items:center}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
 .dot.ok{background:var(--ok)} .dot.err{background:var(--bad)} .dot.load{background:var(--warn)}
@@ -165,6 +186,9 @@ button,input{font:inherit;color:inherit}
     </div>
     <span id="mkt" class="pill closed" title="NSE/BSE equity hours 09:15–15:30 IST, Mon–Fri. Exchange holidays are not accounted for.">Market closed</span>
     <span id="clock" class="clock">--:--:-- IST</span>
+    <button id="srcbtn" class="btn srcbtn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="drawer" title="Outlets, feed health and fresh news">
+      <span id="sdot" class="sdot load" aria-hidden="true"></span>Sources<span id="scount" class="scount"></span><span id="sfilter" class="sfilter" hidden></span>
+    </button>
     <button id="refresh" class="btn primary" type="button">Refresh</button>
   </div>
 </header>
@@ -186,9 +210,25 @@ button,input{font:inherit;color:inherit}
   </div>
 
   <div class="grid">
-    <aside class="rail">
+    <section class="stream" id="stream" aria-live="polite"></section>
+  </div>
+
+  <p class="foot">Headlines come from each publisher's public RSS feed, collected by a GitHub job every 30 minutes, or whenever you run it (or through a free CORS proxy when this file is opened from your device). Times are shown in IST. Click a headline to read the full story on the publisher's site.</p>
+</main>
+
+<div id="scrim" class="scrim" hidden></div>
+<aside id="drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" hidden>
+      <div class="drawer-head">
+        <h2 id="drawerTitle">Sources</h2>
+        <button id="drawerClose" class="iconbtn" type="button" aria-label="Close sources">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
       <div class="panel">
-        <h2>Outlets</h2>
+        <div class="panel-head">
+          <h2>Outlets</h2>
+          <button id="allOutlets" class="linkbtn" type="button">Show all</button>
+        </div>
         <div class="outlets" id="outlets"></div>
       </div>
       <div class="panel">
@@ -202,13 +242,7 @@ button,input{font:inherit;color:inherit}
         <a class="btn" style="margin-top:10px;text-decoration:none" href="https://github.com/nyamalagame/dalal-street-wire/actions/workflows/fetch-feeds.yml" target="_blank" rel="noopener noreferrer">Open fetch page ↗</a>
         <p class="note" id="next"></p>
       </div>
-    </aside>
-
-    <section class="stream" id="stream" aria-live="polite"></section>
-  </div>
-
-  <p class="foot">Headlines come from each publisher's public RSS feed, collected by a GitHub job every 30 minutes, or whenever you run it (or through a free CORS proxy when this file is opened from your device). Times are shown in IST. Click a headline to read the full story on the publisher's site.</p>
-</main>
+</aside>
 
 <script>
 (function(){
@@ -678,6 +712,11 @@ button,input{font:inherit;color:inherit}
       b.addEventListener("click", function(){ state.outletOn[k] = !state.outletOn[k]; store("outlets", state.outletOn); render(); });
       box.appendChild(b);
     });
+    // Remind the reader on the Sources button when outlets are hidden
+    var off = Object.keys(OUTLETS).filter(function(k){ return !state.outletOn[k]; }).length;
+    $("sfilter").hidden = off === 0;
+    $("sfilter").textContent = off + " hidden";
+    $("allOutlets").hidden = off === 0;
   }
 
   function renderHealth(){
@@ -694,6 +733,11 @@ button,input{font:inherit;color:inherit}
       ]));
     });
     $("sFeeds").textContent = live+"/"+FEEDS.length;
+    // Sources button: live feed count and a colored dot (amber if any feed failed)
+    var loading = FEEDS.some(function(f){ return (state.status[f.id]||{}).s === "load"; });
+    var failed = FEEDS.some(function(f){ return (state.status[f.id]||{}).s === "err"; });
+    $("sdot").className = "sdot" + (loading ? " load" : failed ? " warn" : "");
+    $("scount").textContent = loading ? "" : live+"/"+FEEDS.length;
     $("via").textContent = state.snapshotAt
       ? "Fetched by the server at "+istTime.format(state.snapshotAt)+" IST ("+ago(state.snapshotAt)+"). The server fetches every 30 minutes. Hover a failed feed to see why."
       : state.goodProxy ? "Fetching through the "+state.goodProxy+" proxy. Hover a failed feed to see why." : "";
@@ -741,7 +785,7 @@ button,input{font:inherit;color:inherit}
     if (state.cat === "filings"){
       s.appendChild(el("div",{"class":"disclaimer"},[
         el("strong",{text:"Official NSE and BSE filings. "}),
-        "Each entry is a company disclosure or exchange notice published by NSE or BSE: announcements, results, board meetings, corporate actions, insider trades, offer documents, circulars and notices. Links open the filing itself. Use the NSE and BSE switches under Outlets to show one exchange."
+        "Each entry is a company disclosure or exchange notice published by NSE or BSE: announcements, results, board meetings, corporate actions, insider trades, offer documents, circulars and notices. Links open the filing itself. Use the NSE and BSE switches under Sources → Outlets to show one exchange."
       ]));
     }
     if (!list.length){
@@ -809,6 +853,40 @@ button,input{font:inherit;color:inherit}
     // keep relative times fresh roughly every minute
     if (now.getSeconds() === 0 && state.items.length) { renderSummary(); renderStream(); }
   }
+
+  /* ---------- Sources drawer ---------- */
+  function openDrawer(){
+    $("drawer").hidden = false; $("scrim").hidden = false;
+    document.body.classList.add("drawer-open");
+    $("srcbtn").setAttribute("aria-expanded","true");
+    $("drawerClose").focus();
+  }
+  function closeDrawer(){
+    if ($("drawer").hidden) return;
+    $("drawer").hidden = true; $("scrim").hidden = true;
+    document.body.classList.remove("drawer-open");
+    $("srcbtn").setAttribute("aria-expanded","false");
+    $("srcbtn").focus();
+  }
+  $("srcbtn").addEventListener("click", openDrawer);
+  $("drawerClose").addEventListener("click", closeDrawer);
+  $("scrim").addEventListener("click", closeDrawer);
+  document.addEventListener("keydown", function(e){
+    if ($("drawer").hidden) return;
+    if (e.key === "Escape"){ closeDrawer(); return; }
+    if (e.key === "Tab"){  // keep keyboard focus inside the open drawer
+      var f = $("drawer").querySelectorAll('button:not([hidden]), a[href], input');
+      if (!f.length) return;
+      var first = f[0], last = f[f.length-1];
+      if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    }
+  });
+  $("allOutlets").addEventListener("click", function(){
+    Object.keys(OUTLETS).forEach(function(k){ state.outletOn[k] = true; });
+    store("outlets", state.outletOn); render();
+    $("drawerClose").focus();  // the Show all link hides itself, so move focus somewhere visible
+  });
 
   /* ---------- Wire up ---------- */
   $("refresh").addEventListener("click", loadAll);
