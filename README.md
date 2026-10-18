@@ -12,8 +12,6 @@ A single-page dashboard that pulls Indian financial news from public RSS feeds i
 - Search behind the magnifier button, and a **Show more** button for older stories
 - Outlets, feed health and fetch details in a **Sources** panel opened from the header
 - **Stock picks** tab that highlights brokerage and analyst calls, with the rating, target price and brokerage read from each headline
-- Keyword search and per-outlet toggles
-- Feed health panel showing which feeds loaded and which failed
 - News fetched automatically every 30 minutes, plus a manual fetch any time
 - NSE market open/closed indicator
 
