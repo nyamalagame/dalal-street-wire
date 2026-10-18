@@ -200,7 +200,6 @@ button,input{font:inherit;color:inherit}
         <h2>Fresh news</h2>
         <p class="note" style="margin-top:0">News is fetched automatically every 30 minutes. For newer stories right away, open the fetch page, press <b>Run workflow</b>, wait about two minutes, then press Refresh here.</p>
         <a class="btn" style="margin-top:10px;text-decoration:none" href="https://github.com/nyamalagame/dalal-street-wire/actions/workflows/fetch-feeds.yml" target="_blank" rel="noopener noreferrer">Open fetch page ↗</a>
-        <label class="toggle" style="margin-top:12px"><input id="auto" type="checkbox" checked> Check for new news every 10 minutes</label>
         <p class="note" id="next"></p>
       </div>
     </aside>
@@ -369,7 +368,6 @@ button,input{font:inherit;color:inherit}
     return call;
   }
 
-  var REFRESH_MS = 10*60*1000;
   var FEED_TIMEOUT = 12000;
 
   /* ---------- State ---------- */
@@ -390,7 +388,6 @@ button,input{font:inherit;color:inherit}
   function recall(k){ try{ var v = localStorage.getItem("dsw:"+k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
   var saved = recall("outlets"); if (saved) Object.keys(saved).forEach(function(k){ if (k in state.outletOn) state.outletOn[k] = !!saved[k]; });
   var savedCat = recall("cat"); if (savedCat && CATS.some(function(c){return c.id===savedCat;})) state.cat = savedCat;
-  var savedAuto = recall("auto"); if (savedAuto === false) document.getElementById("auto").checked = false;
   state.goodProxy = recall("proxy");
 
   /* ---------- Helpers ---------- */
@@ -599,7 +596,6 @@ button,input{font:inherit;color:inherit}
     state.lastLoad = new Date();
     state.loading = false;
     btn.disabled = false; btn.textContent = "Refresh";
-    scheduleNext();
     render();
   }
 
@@ -810,28 +806,15 @@ button,input{font:inherit;color:inherit}
     var pill = $("mkt");
     pill.className = "pill "+(open?"open":"closed");
     pill.textContent = open ? "Market open" : (mins >= 540 && mins < 555 && wd!=="Sat" && wd!=="Sun") ? "Pre-open" : "Market closed";
-    // Next refresh countdown
-    var auto = $("auto").checked;
-    if (auto && state.nextAt){
-      var left = Math.max(0, state.nextAt - Date.now());
-      $("next").textContent = state.loading ? "Refreshing now…" : "Next refresh in "+Math.floor(left/60000)+":"+String(Math.floor(left/1000)%60).padStart(2,"0");
-      if (left === 0 && !state.loading) loadAll();
-    } else {
-      $("next").textContent = state.lastLoad ? "Last updated "+istTime.format(state.lastLoad)+" IST" : "";
-    }
+    $("next").textContent = state.loading ? "Loading…" : state.lastLoad ? "Page last loaded at "+istTime.format(state.lastLoad)+" IST" : "";
     // keep relative times fresh roughly every minute
     if (now.getSeconds() === 0 && state.items.length) { renderSummary(); renderStream(); }
   }
-  function scheduleNext(){ state.nextAt = $("auto").checked ? Date.now() + REFRESH_MS : null; }
 
   /* ---------- Wire up ---------- */
   $("refresh").addEventListener("click", loadAll);
   var qt;
   $("q").addEventListener("input", function(e){ clearTimeout(qt); var v = e.target.value; qt = setTimeout(function(){ state.q = v; renderStream(); }, 120); });
-  $("auto").addEventListener("change", function(e){ store("auto", e.target.checked); scheduleNext(); });
-  document.addEventListener("visibilitychange", function(){
-    if (!document.hidden && $("auto").checked && state.lastLoad && Date.now() - state.lastLoad > REFRESH_MS) loadAll();
-  });
 
   render();
   tick(); setInterval(tick, 1000);
