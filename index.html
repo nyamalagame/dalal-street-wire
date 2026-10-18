@@ -198,7 +198,7 @@ button,input{font:inherit;color:inherit}
       </div>
       <div class="panel">
         <h2>Fresh news</h2>
-        <p class="note" style="margin-top:0">News is fetched only when you ask. Open the fetch page, press <b>Run workflow</b>, wait about two minutes, then press Refresh here.</p>
+        <p class="note" style="margin-top:0">News is fetched every 30 minutes from 8 am to 8 pm IST, Monday to Friday. For newer stories at any other time, open the fetch page, press <b>Run workflow</b>, wait about two minutes, then press Refresh here.</p>
         <a class="btn" style="margin-top:10px;text-decoration:none" href="https://github.com/nyamalagame/dalal-street-wire/actions/workflows/fetch-feeds.yml" target="_blank" rel="noopener noreferrer">Open fetch page ↗</a>
         <label class="toggle" style="margin-top:12px"><input id="auto" type="checkbox" checked> Check for new news every 10 minutes</label>
         <p class="note" id="next"></p>
@@ -208,7 +208,7 @@ button,input{font:inherit;color:inherit}
     <section class="stream" id="stream" aria-live="polite"></section>
   </div>
 
-  <p class="foot">Headlines come from each publisher's public RSS feed, collected by a GitHub job whenever you run it (or through a free CORS proxy when this file is opened from your device). Times are shown in IST. Click a headline to read the full story on the publisher's site.</p>
+  <p class="foot">Headlines come from each publisher's public RSS feed, collected by a GitHub job every 30 minutes from 8 am to 8 pm IST on weekdays, or whenever you run it (or through a free CORS proxy when this file is opened from your device). Times are shown in IST. Click a headline to read the full story on the publisher's site.</p>
 </main>
 
 <script>
@@ -700,7 +700,7 @@ button,input{font:inherit;color:inherit}
     });
     $("sFeeds").textContent = live+"/"+FEEDS.length;
     $("via").textContent = state.snapshotAt
-      ? "Fetched by the server at "+istTime.format(state.snapshotAt)+" IST ("+ago(state.snapshotAt)+"). Run the fetch job for newer stories. Hover a failed feed to see why."
+      ? "Fetched by the server at "+istTime.format(state.snapshotAt)+" IST ("+ago(state.snapshotAt)+"). The server fetches every 30 minutes, 8 am to 8 pm IST on weekdays. Hover a failed feed to see why."
       : state.goodProxy ? "Fetching through the "+state.goodProxy+" proxy. Hover a failed feed to see why." : "";
   }
 
