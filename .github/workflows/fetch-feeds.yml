@@ -5,13 +5,12 @@ name: Fetch feeds and publish
 # repository, so its history only holds the code.
 # Requires Settings > Pages > Source set to "GitHub Actions".
 
-# Every 30 minutes from 08:05 to 20:05 IST, Monday to Friday (25 runs a day).
-# Cron times are UTC (IST = UTC+5:30). Runs use :05 and :35 rather than the
-# hour and half hour, when GitHub's scheduler is busiest and delays runs.
+# Every 30 minutes, all day, every day (48 runs a day).
+# Runs at :05 and :35 past each hour (UTC), which is :35 and :05 IST, rather
+# than on the hour and half hour, when GitHub's scheduler is busiest and delays runs.
 on:
   schedule:
-    - cron: "35 2 * * 1-5"        # 08:05 IST
-    - cron: "5,35 3-14 * * 1-5"   # 08:35 to 20:05 IST
+    - cron: "5,35 * * * *"
   workflow_dispatch:              # run it by hand any time: Actions tab > Fetch feeds and publish > Run workflow
   push:
     branches: [main]          # republish whenever the dashboard or script changes

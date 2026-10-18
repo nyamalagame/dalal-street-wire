@@ -19,13 +19,13 @@ Open `index.html` in any modern browser. There is nothing to install or build.
 
 ## How it fetches the news
 
-A GitHub Actions job (`.github/workflows/fetch-feeds.yml`) runs `scripts/fetch_feeds.py` every 30 minutes from 8 am to 8 pm IST, Monday to Friday (25 runs a day, none at weekends). The script reads the feed list from `index.html`, fetches every feed on GitHub's servers and writes a compact snapshot, `data/feeds.json`. The job then publishes the dashboard and that snapshot straight to GitHub Pages. Nothing is committed, so the repository holds only the code.
+A GitHub Actions job (`.github/workflows/fetch-feeds.yml`) runs `scripts/fetch_feeds.py` every 30 minutes, all day, every day (48 runs a day). The script reads the feed list from `index.html`, fetches every feed on GitHub's servers and writes a compact snapshot, `data/feeds.json`. The job then publishes the dashboard and that snapshot straight to GitHub Pages. Nothing is committed, so the repository holds only the code.
 
 The dashboard loads the snapshot from its own address, so it works in any browser, including Brave with Shields on, and loads quickly on phones. The snapshot keeps each story's headline, link, date, image link and a one-sentence teaser; the full story is always on the publisher's site.
 
 **Setup:** in the repository's **Settings → Pages**, set **Source** to **GitHub Actions**.
 
-**To get fresh news outside those hours:** open the **Actions** tab, choose **Fetch feeds and publish** and click **Run workflow** (the dashboard's **Open fetch page** button goes straight there). The site updates about two minutes later. Pushing a change to `main` also republishes the site with fresh news.
+**To get fresh news right away:** open the **Actions** tab, choose **Fetch feeds and publish** and click **Run workflow** (the dashboard's **Open fetch page** button goes straight there). The site updates about two minutes later. Pushing a change to `main` also republishes the site with fresh news.
 
 To change the schedule, edit the `cron` lines in the workflow. Cron times are in UTC, and IST is UTC+5:30.
 
